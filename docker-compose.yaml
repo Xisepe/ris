@@ -1,0 +1,47 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      - crackhash_network
+    command: [ "mongod", "--replSet", "rs0" ]
+
+  mongodb_secondary1:
+    image: mongo:latest
+    container_name: mongodb_secondary1
+    restart: always
+    networks:
+      - crackhash_network
+    command: [ "mongod", "--replSet", "rs0" ]
+
+  mongodb_secondary2:
+    image: mongo:latest
+    container_name: mongodb_secondary2
+    restart: always
+    networks:
+      - crackhash_network
+    command: [ "mongod", "--replSet", "rs0" ]
+
+  mongo_setup:
+    image: mongo:latest
+    depends_on:
+      - mongodb
+      - mongodb_secondary1
+      - mongodb_secondary2
+    networks:
+      - crackhash_network
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - >
+        sleep 10 && \
+        mongo --host mongodb:27017 --eval "rs.initiate({_id:'rs0',members:[
+          {_id:0,host:'mongodb:27017'},
+          {_id:1,host:'mongodb_secondary1:27017'},
+          {_id:2,host:'mongodb_secondary2:27017'}
+        ]})"
+networks:
+  crackhash_network:
+    driver: bridge
