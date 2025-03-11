@@ -7,7 +7,18 @@ services:
       - "27017:27017"
     networks:
       - crackhash_network
-    command: [ "mongod", "--replSet", "rs0" ]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    command: [ "mongod", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile" ]
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongodb:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongodb_secondary1:
     image: mongo:latest
@@ -15,7 +26,10 @@ services:
     restart: always
     networks:
       - crackhash_network
-    command: [ "mongod", "--replSet", "rs0" ]
+    command: [ "mongod", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile" ]
+    volumes:
+      - mongodb_secondary1_data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile
 
   mongodb_secondary2:
     image: mongo:latest
@@ -23,7 +37,10 @@ services:
     restart: always
     networks:
       - crackhash_network
-    command: [ "mongod", "--replSet", "rs0" ]
+    command: [ "mongod", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile" ]
+    volumes:
+      - mongodb_secondary2_data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile
 
   mongo_setup:
     image: mongo:latest
@@ -42,6 +59,35 @@ services:
           {_id:1,host:'mongodb_secondary1:27017'},
           {_id:2,host:'mongodb_secondary2:27017'}
         ]})"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Web-интерфейс RabbitMQ
+    networks:
+      - crackhash_network
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit
+      RABBITMQ_DEFAULT_PASS: rabbit
+    healthcheck:
+      test: rabbitmqctl status
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
+
 networks:
   crackhash_network:
     driver: bridge
+
+volumes:
+  mongodb_data:
+  mongodb_secondary1_data:
+  mongodb_secondary2_data:
+  rabbitmq_data:
+  rabbitmq_logs:
