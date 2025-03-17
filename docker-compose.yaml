@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   mongodb:
     image: mongo:latest
@@ -7,9 +9,8 @@ services:
       - "27017:27017"
     networks:
       - crackhash_network
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo
-      MONGO_INITDB_ROOT_PASSWORD: mongo
+    env_file:
+      - .env
     command: [ "mongod", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile" ]
     volumes:
       - mongodb_data:/data/db
@@ -66,12 +67,11 @@ services:
     restart: always
     ports:
       - "5672:5672"
-      - "15672:15672" # Web-интерфейс RabbitMQ
+      - "15672:15672"
     networks:
       - crackhash_network
-    environment:
-      RABBITMQ_DEFAULT_USER: rabbit
-      RABBITMQ_DEFAULT_PASS: rabbit
+    env_file:
+      - .env
     healthcheck:
       test: rabbitmqctl status
       interval: 10s
